@@ -37,6 +37,8 @@ function onOpen() {
     .addItem('シフトを集計する', 'runShiftExport')
     .addSeparator()
     .addItem('シートの初期設定', 'setupSheets')
+    .addSeparator()
+    .addItem('🤖 AIシフト最適化（提案を作成）', 'runOptimizer')
     .addToUi();
 }
 
@@ -140,14 +142,15 @@ function getStaffList(ss) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];   // ヘッダー行のみの場合
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  var data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
 
   var staffList = [];
   data.forEach(function(row) {
     var name       = String(row[0]).trim();
     var calendarId = String(row[1]).trim();
+    var role       = String(row[2]).trim() || 'スタッフ';
     if (name && calendarId) {
-      staffList.push({ name: name, calendarId: calendarId });
+      staffList.push({ name: name, calendarId: calendarId, role: role });
     }
   });
 
@@ -238,11 +241,13 @@ function setupSheets() {
     staffSheet = ss.insertSheet(SHEET_STAFF);
     staffSheet.getRange('A1').setValue('スタッフ名');
     staffSheet.getRange('B1').setValue('カレンダーID（メールアドレス）');
-    staffSheet.getRange(1, 1, 1, 2).setBackground('#e8f0fe').setFontWeight('bold');
+    staffSheet.getRange('C1').setValue('役職');
+    staffSheet.getRange(1, 1, 1, 3).setBackground('#e8f0fe').setFontWeight('bold');
     // サンプル行
     staffSheet.getRange('A2').setValue('山田 太郎（サンプル）');
     staffSheet.getRange('B2').setValue('yamada@gmail.com（ここをカレンダーIDに変更）');
-    staffSheet.autoResizeColumns(1, 2);
+    staffSheet.getRange('C2').setValue('社長 / 店長 / キッチンA / キッチンB / スタッフ');
+    staffSheet.autoResizeColumns(1, 3);
   }
 
   // 設定シート
