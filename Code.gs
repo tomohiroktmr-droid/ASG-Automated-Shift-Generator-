@@ -8,7 +8,7 @@
  * 【シート構成】
  *   スタッフ管理 シート:
  *     A列: スタッフ名
- *     B列: カレンダーID（Gmailアドレス）
+ *     B列: 共有カレンダーID（全スタッフで同じIDを入力）
  *
  *   設定 シート:
  *     B1: 取得開始日（例: 2026/04/01）
@@ -175,7 +175,11 @@ function getEventsForStaff(staff, startDate, endDate) {
   var rows   = [];
 
   events.forEach(function(event) {
-    var title     = event.getTitle();
+    var title = event.getTitle();
+
+    // 共有カレンダー対応: タイトルにスタッフ名が含まれない予定は無視する
+    if (title.indexOf(staff.name) === -1) return;
+
     var dateStr   = Utilities.formatDate(event.getStartTime(), TIMEZONE, 'yyyy/MM/dd');
     var startTime, endTime;
 
