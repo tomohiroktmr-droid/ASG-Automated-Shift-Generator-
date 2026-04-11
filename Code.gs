@@ -223,10 +223,23 @@ function outputToSheet(ss, rows) {
   headerRange.setFontColor('#ffffff');
   headerRange.setFontWeight('bold');
 
-  // --- データ行 ---
+  // --- データ行（日付が変わるタイミングで空白行を挿入）---
   if (rows.length === 0) return;
 
-  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  var paddedRows = [];
+  var prevDate   = null;
+  var blankRow   = ['', '', '', '', ''];
+
+  rows.forEach(function(row) {
+    var dateStr = row[1];
+    if (prevDate !== null && dateStr !== prevDate) {
+      paddedRows.push(blankRow);
+    }
+    paddedRows.push(row);
+    prevDate = dateStr;
+  });
+
+  sheet.getRange(2, 1, paddedRows.length, headers.length).setValues(paddedRows);
 
   // 列幅の自動調整
   sheet.autoResizeColumns(1, headers.length);
