@@ -37,6 +37,11 @@ function onOpen() {
     .addItem('シフトを集計する', 'runShiftExport')
     .addSeparator()
     .addItem('シートの初期設定', 'setupSheets')
+    .addSeparator()
+    .addItem('🤖 シフト最適化を実行', 'runShiftOptimizer')
+    .addItem('最適化シートの初期設定', 'setupOptimizerSheets')
+    .addSeparator()
+    .addItem('📊 過去データ分析 & テンプレート生成', 'runHistoricalAnalysis')
     .addToUi();
 }
 
