@@ -2,18 +2,24 @@
  * =====================================================
  * シフト過去データ分析 & テンプレート生成エンジン
  * =====================================================
- * Googleカレンダーの過去6ヶ月分データを読み取り:
+ * Googleカレンダーの過去データを読み取り:
  *   1. 曜日ごとの平均スキルスコアを集計
  *   2. 「黄金ペア」（相性の良い組み合わせ）を特定
  *   3. 「シフトテンプレート」シートに5パターンを生成
  *
+ * 【タイムアウト対策】
+ *   - デフォルト分析期間を1ヶ月に短縮（最大3ヶ月まで選択可）
+ *   - スタッフ処理ループに経過時間ガードを追加
+ *   - 途中でタイムアウトが近づいたら打ち切って部分結果を出力
+ *
  * 【依存】Code.gs, Optimizer.gs の以下を使用:
- *   - TIMEZONE, WEEKDAY_NAMES, SHEET_TEMPLATE
+ *   - TIMEZONE, WEEKDAY_NAMES, SHEET_TEMPLATE, ROLE_OWNER, ROLE_MANAGER, ROLE_STAFF
  *   - calcHours(), loadStaffMaster(), getStaffList(), getEventsForStaff()
  * =====================================================
  */
 
-var ANALYSIS_MONTHS = 6;
+// GASの実行上限は6分。余裕を持って4分で打ち切る
+var MAX_EXEC_MS = 240000;
 
 var TEMPLATE_PATTERNS = [
   { id: 1, name: 'ベテラン重視型', desc: 'スキルスコア合計が最大になる配置' },
@@ -30,32 +36,52 @@ function runHistoricalAnalysis() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var ui = SpreadsheetApp.getUi();
 
-  var confirm = ui.alert(
-    '📊 過去データ分析',
-    '過去' + ANALYSIS_MONTHS + 'ヶ月分のGoogleカレンダーを読み込んで分析します。\n（スタッフ数によっては数分かかります）\n\n続けますか？',
+  // --- 分析期間をユーザーに選ばせる ---
+  var prompt = ui.prompt(
+    '📊 分析期間の設定',
+    '分析する月数を半角数字で入力してください。\n\n'
+      + '  1 → 直近1ヶ月（推奨・高速）\n'
+      + '  2 → 直近2ヶ月\n'
+      + '  3 → 直近3ヶ月（スタッフが多いと時間がかかります）\n\n'
+      + '※ 空欄または1未満の入力は「1ヶ月」として実行します。',
     ui.ButtonSet.OK_CANCEL
   );
-  if (confirm !== ui.Button.OK) return;
+  if (prompt.getSelectedButton() !== ui.Button.OK) return;
+
+  var months = parseInt(prompt.getResponseText().trim(), 10);
+  if (isNaN(months) || months < 1) months = 1;
+  if (months > 3) months = 3;
 
   try {
-    var shiftData = scanPastCalendarData(ss, ANALYSIS_MONTHS);
-    if (shiftData.length === 0) {
+    // --- カレンダーデータをスキャン（タイムアウト監視付き）---
+    var result = scanPastCalendarData(ss, months);
+
+    if (result.data.length === 0) {
       ui.alert('⚠ データなし',
-        '過去のカレンダーデータが見つかりませんでした。\n「スタッフ管理」シートのカレンダーIDを確認してください。',
+        '対象期間にカレンダーデータが見つかりませんでした。\n「スタッフ管理」シートのカレンダーIDを確認してください。',
         ui.ButtonSet.OK);
       return;
     }
 
     var skillMap     = loadStaffMaster(ss);
-    var weekdayStats = calcWeekdaySkillAverages(shiftData, skillMap);
-    var pairStats    = findGoldenPairs(shiftData, skillMap);
+    var weekdayStats = calcWeekdaySkillAverages(result.data, skillMap);
+    var pairStats    = findGoldenPairs(result.data, skillMap);
     var templates    = generateShiftTemplates(weekdayStats, pairStats, skillMap);
 
-    writeTemplateSheet(ss, templates, weekdayStats, pairStats, shiftData.length);
+    writeTemplateSheet(ss, templates, weekdayStats, pairStats, result.data.length, months, result.timedOut, result.processedCount, result.totalCount);
 
-    ui.alert('✅ 分析完了',
-      '分析レコード数: ' + shiftData.length + '件\n\n「シフトテンプレート」シートに結果を出力しました。\n黄金ペアと5パターンのシフト案をご確認ください。',
-      ui.ButtonSet.OK);
+    // --- 完了メッセージ ---
+    var msg = '分析レコード数: ' + result.data.length + '件\n'
+            + '処理スタッフ: ' + result.processedCount + ' / ' + result.totalCount + '名\n\n'
+            + '「シフトテンプレート」シートを確認してください。';
+
+    if (result.timedOut) {
+      msg += '\n\n⚠ 実行時間の上限（4分）に達したため、一部スタッフのデータを省略しました。\n'
+           + '再実行するか、分析期間を「1ヶ月」に短縮してお試しください。';
+      ui.alert('⚠ 部分的に完了', msg, ui.ButtonSet.OK);
+    } else {
+      ui.alert('✅ 分析完了', msg, ui.ButtonSet.OK);
+    }
 
   } catch (e) {
     ui.alert('❌ エラー', e.message, ui.ButtonSet.OK);
@@ -65,11 +91,20 @@ function runHistoricalAnalysis() {
 
 // =====================================================
 // 過去Nヶ月分のカレンダーデータをスキャンする
-// @return [{name, date, weekday, startTime, endTime, hours}]
+//
+// 【タイムアウト対策】
+//   - forループで1スタッフずつ処理
+//   - ループ先頭で経過時間をチェックし MAX_EXEC_MS を超えたら打ち切る
+//
+// @return {data, timedOut, processedCount, totalCount}
 // =====================================================
 function scanPastCalendarData(ss, months) {
+  var execStart = new Date().getTime();
   var staffList = getStaffList(ss);
-  if (staffList.length === 0) return [];
+
+  if (staffList.length === 0) {
+    return { data: [], timedOut: false, processedCount: 0, totalCount: 0 };
+  }
 
   var endDate   = new Date();
   endDate.setHours(23, 59, 59, 999);
@@ -77,9 +112,20 @@ function scanPastCalendarData(ss, months) {
   startDate.setMonth(startDate.getMonth() - months);
   startDate.setHours(0, 0, 0, 0);
 
-  var shiftData = [];
+  var shiftData      = [];
+  var timedOut       = false;
+  var processedCount = 0;
 
-  staffList.forEach(function(staff) {
+  for (var i = 0; i < staffList.length; i++) {
+    // ---- タイムアウト事前チェック ----
+    var elapsed = new Date().getTime() - execStart;
+    if (elapsed > MAX_EXEC_MS) {
+      timedOut = true;
+      Logger.log('タイムアウト回避: ' + staffList[i].name + ' 以降をスキップ（経過 ' + Math.round(elapsed / 1000) + '秒）');
+      break;
+    }
+
+    var staff = staffList[i];
     try {
       var rows = getEventsForStaff(staff, startDate, endDate);
       rows.forEach(function(row) {
@@ -98,9 +144,15 @@ function scanPastCalendarData(ss, months) {
     } catch (e) {
       Logger.log('スキャンエラー(' + staff.name + '): ' + e.message);
     }
-  });
+    processedCount++;
+  }
 
-  return shiftData;
+  return {
+    data:           shiftData,
+    timedOut:       timedOut,
+    processedCount: processedCount,
+    totalCount:     staffList.length
+  };
 }
 
 // =====================================================
@@ -123,10 +175,10 @@ function calcWeekdaySkillAverages(shiftData, skillMap) {
 
   var stats = {};
   WEEKDAY_NAMES.forEach(function(w) {
-    var wd    = byWeekday[w];
-    var days  = Object.values(wd.days);
-    var kSum  = 0;
-    var hSum  = 0;
+    var wd   = byWeekday[w];
+    var days = Object.values(wd.days);
+    var kSum = 0;
+    var hSum = 0;
 
     days.forEach(function(staffOnDay) {
       staffOnDay.forEach(function(entry) {
@@ -198,9 +250,9 @@ function generateShiftTemplates(weekdayStats, pairStats, skillMap) {
   var templates = {};
 
   WEEKDAY_NAMES.forEach(function(weekday) {
-    var stat      = weekdayStats[weekday];
-    var freq      = stat.staffFrequency;
-    var byFreq    = Object.keys(freq).map(function(name) {
+    var stat   = weekdayStats[weekday];
+    var freq   = stat.staffFrequency;
+    var byFreq = Object.keys(freq).map(function(name) {
       return { name: name, freq: freq[name], info: skillMap[name] || {} };
     }).sort(function(a, b) { return b.freq - a.freq; });
 
@@ -214,14 +266,14 @@ function generateShiftTemplates(weekdayStats, pairStats, skillMap) {
       }).slice(0, 4);
     dayPats.push(buildPattern(1, weekday, veterans));
 
-    // パターン2: コスト重視型（時給の低い順）
+    // パターン2: コスト重視型（時給の低い順、社長・店長は先頭固定）
     var cheapest = byFreq.slice()
       .filter(function(s) { return s.info.role !== ROLE_OWNER && s.info.role !== ROLE_MANAGER; })
       .sort(function(a, b) { return (a.info.wage || 0) - (b.info.wage || 0); });
-    var owners   = byFreq.filter(function(s) { return s.info.role === ROLE_OWNER || s.info.role === ROLE_MANAGER; });
+    var owners = byFreq.filter(function(s) { return s.info.role === ROLE_OWNER || s.info.role === ROLE_MANAGER; });
     dayPats.push(buildPattern(2, weekday, owners.concat(cheapest).slice(0, 4)));
 
-    // パターン3: バランス型（出勤頻度トップ）
+    // パターン3: バランス型（出勤頻度トップ順）
     dayPats.push(buildPattern(3, weekday, byFreq.slice(0, 4)));
 
     // パターン4: 黄金ペア型
@@ -272,8 +324,8 @@ function pickGoldenPairStaff(pairStats, freq, byFreq, maxCount) {
 
 // パターンオブジェクトを構築する
 function buildPattern(id, weekday, staffList) {
-  var pat    = TEMPLATE_PATTERNS[id - 1];
-  var slots  = staffList.map(function(s) {
+  var pat   = TEMPLATE_PATTERNS[id - 1];
+  var slots = staffList.map(function(s) {
     var info = s.info || {};
     return {
       name:   s.name,
@@ -306,8 +358,11 @@ function buildPattern(id, weekday, staffList) {
 
 // =====================================================
 // 「シフトテンプレート」シートに全分析結果を書き出す
+// @param timedOut       タイムアウト打ち切りが発生したか
+// @param processedCount 処理できたスタッフ数
+// @param totalCount     全スタッフ数
 // =====================================================
-function writeTemplateSheet(ss, templates, weekdayStats, pairStats, dataCount) {
+function writeTemplateSheet(ss, templates, weekdayStats, pairStats, dataCount, months, timedOut, processedCount, totalCount) {
   var old = ss.getSheetByName(SHEET_TEMPLATE);
   if (old) ss.deleteSheet(old);
   var sheet = ss.insertSheet(SHEET_TEMPLATE);
@@ -319,12 +374,23 @@ function writeTemplateSheet(ss, templates, weekdayStats, pairStats, dataCount) {
   }
 
   var rows = [];
-  var titleRows = [];  // 書式を後から適用するために行番号を記録
 
   // ---- タイトル ----
-  rows.push(r8(['📋 シフトテンプレート（過去' + ANALYSIS_MONTHS + 'ヶ月データ分析）']));
-  rows.push(r8(['分析レコード数: ' + dataCount + '件　生成日時: ' + Utilities.formatDate(new Date(), TIMEZONE, 'yyyy/MM/dd HH:mm')]));
-  rows.push(r8(['']));
+  var titleText = '📋 シフトテンプレート（直近' + months + 'ヶ月データ分析）';
+  if (timedOut) titleText += '　⚠ 部分データ（' + processedCount + '/' + totalCount + '名）';
+  rows.push(r8([titleText]));
+  rows.push(r8([
+    '分析レコード数: ' + dataCount + '件　'
+    + '処理スタッフ: ' + processedCount + '/' + totalCount + '名　'
+    + '生成日時: ' + Utilities.formatDate(new Date(), TIMEZONE, 'yyyy/MM/dd HH:mm')
+  ]));
+
+  // タイムアウト警告行
+  if (timedOut) {
+    rows.push(r8(['⚠ 実行時間の上限に達したため ' + (totalCount - processedCount) + '名分のデータを省略しました。分析期間を短縮するか、再実行してください。']));
+  } else {
+    rows.push(r8(['']));
+  }
 
   // ---- 黄金ペアランキング ----
   var pairTitleRow = rows.length + 1;
@@ -392,7 +458,7 @@ function writeTemplateSheet(ss, templates, weekdayStats, pairStats, dataCount) {
     });
   });
 
-  // ---- スコア凡例 ----
+  // ---- スキルスコア凡例 ----
   rows.push(r8(['']));
   rows.push(r8(['【スキルスコア凡例】']));
   rows.push(r8(['記号', '×', '△', '□', '◎', '◎◎', '', '']));
@@ -402,7 +468,11 @@ function writeTemplateSheet(ss, templates, weekdayStats, pairStats, dataCount) {
   sheet.getRange(1, 1, rows.length, COL).setValues(rows);
 
   // 書式設定
-  sheet.getRange(1, 1, 1, COL).setBackground('#1a73e8').setFontColor('#ffffff').setFontWeight('bold').setFontSize(13);
+  var titleBg = timedOut ? '#e65100' : '#1a73e8';
+  sheet.getRange(1, 1, 1, COL).setBackground(titleBg).setFontColor('#ffffff').setFontWeight('bold').setFontSize(13);
+  if (timedOut) {
+    sheet.getRange(3, 1, 1, COL).setBackground('#fff3e0').setFontColor('#bf360c').setFontWeight('bold');
+  }
   sheet.getRange(pairTitleRow, 1, 1, COL).setBackground('#fff3e0').setFontWeight('bold');
   sheet.getRange(pairTitleRow + 1, 1, 1, COL).setBackground('#4a86e8').setFontColor('#ffffff').setFontWeight('bold');
   sheet.getRange(statTitleRow, 1, 1, COL).setBackground('#e8f5e9').setFontWeight('bold');
