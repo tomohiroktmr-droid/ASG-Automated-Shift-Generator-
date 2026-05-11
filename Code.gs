@@ -28,6 +28,15 @@ var SHEET_SETTINGS = '設定';
 var SHEET_OUTPUT   = 'シフト集計';
 var TIMEZONE       = 'Asia/Tokyo';
 
+// 「スタッフ名 ＋ 状態」パターンを検出するキーワード
+// 例: "あやこ 休み" → 基本名:"あやこ"  状態:"休み"
+var STATUS_KEYWORDS = [
+  '休み', 'お休み', '休暇', '半休',
+  '仕込みだけ', '仕込み',
+  '行機', '移動',
+  '遅刻', '早退', '欠勤'
+];
+
 // =====================================================
 // メニュー追加（スプレッドシートを開いたときに自動実行）
 // =====================================================
@@ -87,20 +96,24 @@ function runShiftExport() {
     }
   });
 
+  // --- 4. 重複排除（同日・同スタッフ・同時刻・同イベントを1行に集約）---
+  allRows = deduplicateRows(allRows);
+
   // 日付→スタッフ名 の順でソート
   allRows.sort(function(a, b) {
     if (a[1] === b[1]) return a[0].localeCompare(b[0], 'ja');
     return a[1] < b[1] ? -1 : 1;
   });
 
-  // --- 4. シフト集計シートへ出力 ---
+  // --- 5. シフト集計シートへ出力（書き込み前に完全クリア）---
   outputToSheet(ss, allRows);
 
-  // --- 5. 完了メッセージ ---
+  // --- 6. 完了メッセージ ---
   var msg = '✅ 集計が完了しました。\n\n'
     + '期間: ' + Utilities.formatDate(period.startDate, TIMEZONE, 'yyyy/MM/dd')
     + ' ～ ' + Utilities.formatDate(period.endDate,   TIMEZONE, 'yyyy/MM/dd') + '\n'
-    + '件数: ' + allRows.length + ' 件';
+    + '件数: ' + allRows.length + ' 件\n'
+    + '処理カレンダー: ' + staffList.length + ' 件';
 
   if (errors.length > 0) {
     msg += '\n\n⚠ 以下のカレンダーは取得できませんでした:\n' + errors.join('\n');
@@ -148,12 +161,18 @@ function getStaffList(ss) {
   var data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
 
   var staffList = [];
+  var seenKeys  = {};
   data.forEach(function(row) {
-    var name       = String(row[0]).trim();
+    var rawName    = String(row[0]).trim();
     var calendarId = String(row[1]).trim();
-    if (name && calendarId) {
-      staffList.push({ name: name, calendarId: calendarId });
-    }
+    if (!rawName || !calendarId) return;
+
+    var baseName = normalizeStaffName(rawName).baseName;
+    var key = calendarId + '\t' + baseName;
+    if (seenKeys[key]) return; // 同カレンダー・同baseName の重複登録をスキップ
+    seenKeys[key] = true;
+
+    staffList.push({ name: baseName, calendarId: calendarId });
   });
 
   return staffList;
@@ -196,6 +215,74 @@ function getEventsForStaff(staff, startDate, endDate) {
 }
 
 // =====================================================
+// スタッフ名の正規化: "あやこ 休み" → {baseName:"あやこ", status:"休み"}
+// STATUS_KEYWORDS に一致する末尾語句を status として分離する
+// =====================================================
+function normalizeStaffName(rawName) {
+  var name = rawName.trim();
+  for (var i = 0; i < STATUS_KEYWORDS.length; i++) {
+    var kw = STATUS_KEYWORDS[i];
+    // "名前 キーワード" または "名前　キーワード"（全角スペース）に対応
+    var re = new RegExp('[\\s　]+' + kw + '$');
+    if (re.test(name)) {
+      return {
+        baseName: name.replace(re, '').trim(),
+        status:   kw
+      };
+    }
+  }
+  return { baseName: name, status: '' };
+}
+
+// =====================================================
+// 重複行を排除する
+// 同一 (baseName, 日付, 開始時間, 終了時間, イベントタイトル) を1行にまとめ、
+// status があればイベント名列に追記する
+// =====================================================
+function deduplicateRows(rows) {
+  var seen  = {};
+  var result = [];
+
+  rows.forEach(function(row) {
+    // row: [スタッフ名, 日付, 開始時間, 終了時間, イベント名]
+    var normalized = normalizeStaffName(row[0]);
+    var baseName   = normalized.baseName;
+    var status     = normalized.status;
+    var key = [baseName, row[1], row[2], row[3], row[4]].join('\t');
+
+    if (seen[key]) {
+      // 既出行に status を追記（未記載の場合のみ）
+      if (status && seen[key].indexOf(status) === -1) {
+        seen[key] += '／' + status;
+        // result 内の対象行を更新
+        for (var k = 0; k < result.length; k++) {
+          if (result[k][0] === baseName &&
+              result[k][1] === row[1]   &&
+              result[k][2] === row[2]   &&
+              result[k][3] === row[3]   &&
+              result[k][4] === row[4]) {
+            result[k][0] = baseName;
+            break;
+          }
+        }
+      }
+      return; // スキップ
+    }
+
+    seen[key] = status || '__SEEN__';
+    // スタッフ名列を baseName に正規化して格納
+    var newRow = row.slice();
+    newRow[0]  = baseName;
+    if (status) {
+      newRow[4] = newRow[4] ? newRow[4] + '（' + status + '）' : status;
+    }
+    result.push(newRow);
+  });
+
+  return result;
+}
+
+// =====================================================
 // 「シフト集計」シートにデータを出力する（全クリア→全出し）
 // @param ss   Spreadsheet
 // @param rows [[スタッフ名, 日付, 開始時間, 終了時間, イベント名], ...]
@@ -208,8 +295,9 @@ function outputToSheet(ss, rows) {
     sheet = ss.insertSheet(SHEET_OUTPUT);
   }
 
-  // --- 既存データを全クリア ---
+  // --- 既存データと書式を全クリア ---
   sheet.clearContents();
+  sheet.clearFormats();
 
   // --- ヘッダー行 ---
   var headers = ['スタッフ名', '日付', '開始時間', '終了時間', 'イベント名（備考）'];
