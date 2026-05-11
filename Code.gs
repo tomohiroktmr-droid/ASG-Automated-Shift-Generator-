@@ -83,20 +83,26 @@ function runShiftExport() {
     return;
   }
 
-  // --- 3. 各スタッフのイベントを収集 ---
-  var allRows = [];
-  var errors  = [];
+  // --- 3. 各スタッフのイベントを収集（タイムアウトガード付き）---
+  var allRows   = [];
+  var errors    = [];
+  var execStart = new Date().getTime();
+  var timedOut  = false;
 
-  staffList.forEach(function(staff) {
+  for (var i = 0; i < staffList.length; i++) {
+    if (new Date().getTime() - execStart > 300000) { // 5分上限
+      timedOut = true;
+      break;
+    }
     try {
-      var rows = getEventsForStaff(staff, period.startDate, period.endDate);
+      var rows = getEventsForStaff(staffList[i], period.startDate, period.endDate);
       allRows = allRows.concat(rows);
     } catch (e) {
-      errors.push(staff.name + '（' + staff.calendarId + '）: ' + e.message);
+      errors.push(staffList[i].name + '（' + staffList[i].calendarId + '）: ' + e.message);
     }
-  });
+  }
 
-  // --- 4. 重複排除（同日・同スタッフ・同時刻・同イベントを1行に集約）---
+  // --- 4. 重複排除（全5列が同一の行をスキップする最終安全網）---
   allRows = deduplicateRows(allRows);
 
   // 日付→スタッフ名 の順でソート
@@ -114,6 +120,11 @@ function runShiftExport() {
     + ' ～ ' + Utilities.formatDate(period.endDate,   TIMEZONE, 'yyyy/MM/dd') + '\n'
     + '件数: ' + allRows.length + ' 件\n'
     + '処理カレンダー: ' + staffList.length + ' 件';
+
+  if (timedOut) {
+    msg += '\n\n⚠ 実行時間の上限（5分）に達したため、一部スタッフのデータを省略しました。\n'
+         + '再実行するか、「スタッフ管理」シートのエントリ数を確認してください。';
+  }
 
   if (errors.length > 0) {
     msg += '\n\n⚠ 以下のカレンダーは取得できませんでした:\n' + errors.join('\n');
@@ -194,10 +205,23 @@ function getEventsForStaff(staff, startDate, endDate) {
 
   var events = calendar.getEvents(startDate, endDate);
   var rows   = [];
+  var seen   = {}; // 同スタッフ内の重複を事前に除去するローカルセット
 
   events.forEach(function(event) {
-    var title     = event.getTitle();
-    var dateStr   = Utilities.formatDate(event.getStartTime(), TIMEZONE, 'yyyy/MM/dd');
+    var rawTitle   = event.getTitle().trim();
+    var normalized = normalizeStaffName(rawTitle);
+    var len        = staff.name.length;
+
+    // ---- タイトル照合: 次の3条件いずれかを満たすイベントのみ採用 ----
+    // (1) normalizeStaffName が分離した baseName がスタッフ名と完全一致
+    // (2) タイトルが「スタッフ名＋半角スペース」で始まる（未登録キーワード対応）
+    // (3) タイトルが「スタッフ名＋全角スペース」で始まる
+    var baseMatch = normalized.baseName === staff.name;
+    var prefixOk  = rawTitle.slice(0, len + 1) === staff.name + ' '
+                 || rawTitle.slice(0, len + 1) === staff.name + '　';
+    if (!baseMatch && !prefixOk) return; // 別スタッフのイベントのため除外
+
+    var dateStr = Utilities.formatDate(event.getStartTime(), TIMEZONE, 'yyyy/MM/dd');
     var startTime, endTime;
 
     if (event.isAllDayEvent()) {
@@ -208,7 +232,16 @@ function getEventsForStaff(staff, startDate, endDate) {
       endTime   = Utilities.formatDate(event.getEndTime(),   TIMEZONE, 'HH:mm');
     }
 
-    rows.push([staff.name, dateStr, startTime, endTime, title]);
+    // 備考列: STATUS_KEYWORD があればそれを、なければタイトルのスタッフ名以降の文字列
+    var notes = normalized.status
+             || rawTitle.slice(len).replace(/^[\s　]+/, '').trim();
+
+    // ---- 同スタッフ内の重複チェック ----
+    var key = [staff.name, dateStr, startTime, endTime, notes].join('\t');
+    if (seen[key]) return;
+    seen[key] = true;
+
+    rows.push([staff.name, dateStr, startTime, endTime, notes]);
   });
 
   return rows;
@@ -235,50 +268,18 @@ function normalizeStaffName(rawName) {
 }
 
 // =====================================================
-// 重複行を排除する
-// 同一 (baseName, 日付, 開始時間, 終了時間, イベントタイトル) を1行にまとめ、
-// status があればイベント名列に追記する
+// 重複行を排除する（全5列が同一の行をスキップ）
+// getStaffList・getEventsForStaff の正規化後に呼ぶ最終安全網
 // =====================================================
 function deduplicateRows(rows) {
-  var seen  = {};
+  var seen   = {};
   var result = [];
-
   rows.forEach(function(row) {
-    // row: [スタッフ名, 日付, 開始時間, 終了時間, イベント名]
-    var normalized = normalizeStaffName(row[0]);
-    var baseName   = normalized.baseName;
-    var status     = normalized.status;
-    var key = [baseName, row[1], row[2], row[3], row[4]].join('\t');
-
-    if (seen[key]) {
-      // 既出行に status を追記（未記載の場合のみ）
-      if (status && seen[key].indexOf(status) === -1) {
-        seen[key] += '／' + status;
-        // result 内の対象行を更新
-        for (var k = 0; k < result.length; k++) {
-          if (result[k][0] === baseName &&
-              result[k][1] === row[1]   &&
-              result[k][2] === row[2]   &&
-              result[k][3] === row[3]   &&
-              result[k][4] === row[4]) {
-            result[k][0] = baseName;
-            break;
-          }
-        }
-      }
-      return; // スキップ
-    }
-
-    seen[key] = status || '__SEEN__';
-    // スタッフ名列を baseName に正規化して格納
-    var newRow = row.slice();
-    newRow[0]  = baseName;
-    if (status) {
-      newRow[4] = newRow[4] ? newRow[4] + '（' + status + '）' : status;
-    }
-    result.push(newRow);
+    var key = row.join('\t');
+    if (seen[key]) return;
+    seen[key] = true;
+    result.push(row);
   });
-
   return result;
 }
 
