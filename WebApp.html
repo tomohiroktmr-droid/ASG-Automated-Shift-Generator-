@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スタッフ管理システム</title>
+<style>
+/* ========== リセット & 変数 ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #1a73e8;
+  --primary-dark: #1557b0;
+  --success: #34a853;
+  --danger: #ea4335;
+  --warning: #fbbc04;
+  --purple: #9334e6;
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --text: #202124;
+  --text-sub: #5f6368;
+  --radius: 12px;
+  --shadow: 0 2px 8px rgba(0,0,0,.12);
+  --nav-h: 56px;
+}
+
+body { font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ========== ナビゲーション ========== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h);
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+.nav-title { font-size: 1.1rem; font-weight: 700; flex: 1; }
+.nav-store { font-size: .8rem; opacity: .8; }
+.nav-tabs { display: flex; gap: 4px; }
+.nav-tab {
+  padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: .82rem;
+  color: rgba(255,255,255,.75); transition: all .2s; white-space: nowrap; border: none; background: none;
+}
+.nav-tab:hover { background: rgba(255,255,255,.15); color: #fff; }
+.nav-tab.active { background: rgba(255,255,255,.25); color: #fff; font-weight: 600; }
+
+/* ========== メインコンテンツ ========== */
+.main { margin-top: var(--nav-h); padding: 16px; max-width: 1100px; margin-left: auto; margin-right: auto; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ========== カード ========== */
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.card-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.card-title .icon { font-size: 1.2rem; }
+
+/* ========== グリッド ========== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media(max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+/* ========== 統計カード ========== */
+.stat-card {
+  border-radius: var(--radius); padding: 16px; color: #fff;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-card.blue   { background: var(--primary); }
+.stat-card.green  { background: var(--success); }
+.stat-card.red    { background: var(--danger); }
+.stat-card.purple { background: var(--purple); }
+.stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+.stat-label { font-size: .8rem; opacity: .85; }
+
+/* ========== ボタン ========== */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: .875rem; font-weight: 600; transition: all .2s;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { filter: brightness(.9); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { filter: brightness(.9); }
+.btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+.btn-outline:hover { background: var(--primary); color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: .8rem; border-radius: 6px; }
+.btn-icon { padding: 6px; width: 32px; height: 32px; justify-content: center; }
+
+/* ========== フォーム ========== */
+.form-group { margin-bottom: 12px; }
+.form-label { display: block; font-size: .82rem; font-weight: 600; color: var(--text-sub); margin-bottom: 4px; }
+.form-control {
+  width: 100%; padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: .9rem; transition: border-color .2s; background: #fff;
+}
+.form-control:focus { outline: none; border-color: var(--primary); }
+select.form-control { cursor: pointer; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+/* ========== チェックリスト ========== */
+.checklist { list-style: none; }
+.check-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px; border-radius: 10px; border: 1.5px solid var(--border);
+  margin-bottom: 8px; transition: all .2s; background: #fff;
+}
+.check-item:hover { border-color: var(--primary); box-shadow: 0 2px 6px rgba(26,115,232,.12); }
+.check-item.done { background: #f0fff4; border-color: var(--success); }
+.check-item.done .check-name { text-decoration: line-through; color: var(--text-sub); }
+.check-toggle {
+  width: 22px; height: 22px; min-width: 22px; border-radius: 50%; border: 2px solid var(--border);
+  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .2s; font-size: 14px; margin-top: 1px;
+}
+.check-toggle.done { background: var(--success); border-color: var(--success); }
+.check-body { flex: 1; }
+.check-name { font-size: .92rem; font-weight: 600; }
+.check-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.badge {
+  font-size: .72rem; padding: 2px 8px; border-radius: 20px; font-weight: 600;
+}
+.badge-blue   { background: #e8f0fe; color: var(--primary); }
+.badge-green  { background: #e6f4ea; color: var(--success); }
+.badge-red    { background: #fce8e6; color: var(--danger); }
+.badge-orange { background: #fef7e0; color: #e37400; }
+.badge-gray   { background: #f1f3f4; color: var(--text-sub); }
+.check-time { font-size: .78rem; color: var(--text-sub); margin-top: 4px; }
+.manual-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .75rem; color: var(--primary); background: none; border: none;
+  cursor: pointer; padding: 2px 4px; border-radius: 4px;
+}
+.manual-btn:hover { background: #e8f0fe; }
+.check-actions { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+/* ========== テーブル ========== */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+th { background: var(--bg); padding: 10px 12px; text-align: left; font-size: .8rem; color: var(--text-sub); border-bottom: 2px solid var(--border); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:hover td { background: #f8f9fa; }
+
+/* ========== スキルレベル ========== */
+.skill-stars { display: flex; gap: 3px; }
+.star { font-size: 16px; color: var(--border); cursor: pointer; transition: color .15s; }
+.star.filled { color: var(--warning); }
+.star:hover, .star:hover ~ .star { color: var(--border) !important; }
+.skill-stars:hover .star { color: var(--warning); }
+.skill-stars .star:hover ~ .star { color: var(--border); }
+
+/* ========== プログレスバー ========== */
+.progress { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; transition: width .4s ease; }
+.progress-bar.green  { background: var(--success); }
+.progress-bar.orange { background: var(--warning); }
+.progress-bar.red    { background: var(--danger); }
+
+/* ========== モーダル ========== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: 16px; padding: 24px;
+  max-width: 540px; width: calc(100% - 32px); max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,.25); animation: modalIn .2s ease;
+}
+@keyframes modalIn { from { transform: scale(.95); opacity: 0; } }
+.modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+/* ========== トースト ========== */
+.toast-container { position: fixed; bottom: 16px; right: 16px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: #323232; color: #fff; padding: 12px 20px; border-radius: 10px;
+  font-size: .875rem; box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  animation: toastIn .25s ease; max-width: 320px;
+}
+.toast.success { background: var(--success); }
+.toast.error   { background: var(--danger); }
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } }
+
+/* ========== タブ内切替 ========== */
+.tab-bar { display: flex; gap: 4px; margin-bottom: 16px; background: var(--bg); border-radius: 10px; padding: 4px; }
+.tab-btn { flex: 1; padding: 8px; border: none; background: none; cursor: pointer; border-radius: 8px; font-size: .875rem; font-weight: 500; color: var(--text-sub); transition: all .2s; }
+.tab-btn.active { background: var(--surface); color: var(--primary); font-weight: 700; box-shadow: var(--shadow); }
+
+/* ========== フィルターバー ========== */
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+
+/* ========== 空状態 ========== */
+.empty { text-align: center; padding: 40px; color: var(--text-sub); }
+.empty-icon { font-size: 3rem; margin-bottom: 8px; }
+
+/* ========== ローディング ========== */
+.loading { display: flex; align-items: center; justify-content: center; padding: 40px; gap: 12px; color: var(--text-sub); }
+.spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== 評価サマリーカード ========== */
+.assess-card { border-radius: var(--radius); border: 1.5px solid var(--border); padding: 14px; margin-bottom: 10px; }
+.assess-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.assess-name { font-weight: 700; font-size: .95rem; }
+.assess-role { font-size: .78rem; color: var(--text-sub); }
+.assess-stats { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+.assess-stat { font-size: .82rem; }
+.assess-stat strong { font-size: 1.2rem; font-weight: 800; }
+
+/* ========== マニュアルモーダル ========== */
+.manual-content { background: #f8f9fa; border-radius: 8px; padding: 14px; font-size: .875rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; }
+.manual-link { display: flex; align-items: center; gap: 8px; padding: 10px; background: #e8f0fe; border-radius: 8px; margin-top: 8px; }
+.manual-link a { color: var(--primary); font-weight: 600; text-decoration: none; }
+.manual-link a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- ナビゲーション -->
+<nav class="nav">
+  <div class="nav-title">🏪 <span id="storeName">スタッフ管理</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard')">📊 ダッシュボード</button>
+    <button class="nav-tab" onclick="showPage('checklist')">✅ チェック</button>
+    <button class="nav-tab" onclick="showPage('stats')">📈 統計</button>
+    <button class="nav-tab" onclick="showPage('skill')">⭐ スキル</button>
+    <button class="nav-tab" onclick="showPage('assess')">💰 査定</button>
+    <button class="nav-tab" onclick="showPage('staff')">👥 スタッフ</button>
+    <button class="nav-tab" onclick="showPage('tasks')">📋 タスク</button>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- ========== ダッシュボード ========== -->
+  <div id="page-dashboard" class="page active">
+    <div id="dashStats" class="grid-3" style="margin-bottom:12px;">
+      <div class="loading"><div class="spinner"></div>読込中...</div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">✅</span>今日の未実施タスク</div>
+        <div id="dashPendingList"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">⏰</span>最近のチェック記録</div>
+        <div id="dashRecentList"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== チェックリスト ========== -->
+  <div id="page-checklist" class="page">
+    <div class="card">
+      <div class="filter-bar">
+        <select class="form-control" id="checkFloor" style="width:auto" onchange="loadChecklist()">
+          <option value="">全フロア</option>
+        </select>
+        <select class="form-control" id="checkPosition" style="width:auto" onchange="loadChecklist()">
+          <option value="">全ポジション</option>
+        </select>
+        <select class="form-control" id="checkTiming" style="width:auto" onchange="loadChecklist()">
+          <option value="">全タイミング</option>
+          <option>開店前</option><option>開店後</option><option>1時間毎</option>
+          <option>昼</option><option>夕方</option><option>閉店後</option><option>週1回(月)</option>
+        </select>
+        <select class="form-control" id="currentStaff" style="width:auto">
+          <option value="">担当者選択...</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadChecklist()">🔄 更新</button>
+      </div>
+      <ul class="checklist" id="checklistItems">
+        <div class="loading"><div class="spinner"></div>読込中...</div>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ========== 統計 ========== -->
+  <div id="page-stats" class="page">
+    <div class="card">
+      <div class="filter-bar">
+        <input type="date" class="form-control" id="statsStart" style="width:auto">
+        <span style="color:var(--text-sub)">〜</span>
+        <input type="date" class="form-control" id="statsEnd" style="width:auto">
+        <button class="btn btn-primary btn-sm" onclick="loadStats()">📊 集計</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchStatsTab('staff')">スタッフ別</button>
+      <button class="tab-btn" onclick="switchStatsTab('task')">タスク別</button>
+    </div>
+    <div id="statsStaff" class="card">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div id="statsTask" class="card" style="display:none">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== スキルチェック ========== -->
+  <div id="page-skill" class="page">
+    <div class="filter-bar">
+      <select class="form-control" id="skillStaffFilter" style="width:auto" onchange="loadSkills()">
+        <option value="">全スタッフ</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="openSkillModal()">＋ スキル評価を追加</button>
+    </div>
+    <div id="skillContent">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== 給与査定 ========== -->
+  <div id="page-assess" class="page">
+    <div class="card">
+      <div class="filter-bar">
+        <input type="month" class="form-control" id="assessMonth" style="width:auto">
+        <button class="btn btn-primary btn-sm" onclick="loadAssessment()">📊 集計</button>
+      </div>
+    </div>
+    <div id="assessContent">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ========== スタッフ管理 ========== -->
+  <div id="page-staff" class="page">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+      <button class="btn btn-primary" onclick="openStaffModal()">＋ スタッフを追加</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table id="staffTable">
+          <thead><tr><th>ID</th><th>名前</th><th>役職</th><th>フロア</th><th>ポジション</th><th>時給</th><th>入社日</th><th>ステータス</th><th>操作</th></tr></thead>
+          <tbody id="staffTableBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== タスク管理 ========== -->
+  <div id="page-tasks" class="page">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+      <button class="btn btn-primary" onclick="openTaskModal()">＋ タスクを追加</button>
+    </div>
+    <div class="card">
+      <div class="filter-bar">
+        <select class="form-control" id="taskFloorFilter" style="width:auto" onchange="loadTasks()">
+          <option value="">全フロア</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>タスク名</th><th>カテゴリ</th><th>フロア</th><th>ポジション</th><th>タイミング</th><th>目安(分)</th><th>重要度</th><th>操作</th></tr></thead>
+          <tbody id="taskTableBody"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ========== モーダル群 ========== -->
+
+<!-- チェック実施モーダル -->
+<div class="modal-overlay" id="checkModal">
+  <div class="modal">
+    <div class="modal-title">✅ チェック実施記録</div>
+    <input type="hidden" id="checkTaskId">
+    <input type="hidden" id="checkTaskName">
+    <div class="form-group">
+      <div class="form-label">タスク</div>
+      <div id="checkTaskLabel" style="font-weight:700;font-size:1rem;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">担当者 <span style="color:var(--danger)">*</span></label>
+      <select class="form-control" id="checkStaffSelect"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ステータス</label>
+      <select class="form-control" id="checkStatus">
+        <option value="完了">✅ 完了</option>
+        <option value="一部完了">⚠️ 一部完了</option>
+        <option value="未実施">❌ 未実施（記録のみ）</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">所要時間（分）</label>
+      <input type="number" class="form-control" id="checkElapsed" min="1" max="120" placeholder="例: 5">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ</label>
+      <textarea class="form-control" id="checkMemo" placeholder="気づいたこと・補足など"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('checkModal')">キャンセル</button>
+      <button class="btn btn-success" onclick="submitCheck()">記録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- マニュアルモーダル -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal">
+    <div class="modal-title">📖 <span id="manualTitle"></span></div>
+    <div id="manualBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('manualModal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- スタッフ登録モーダル -->
+<div class="modal-overlay" id="staffModal">
+  <div class="modal">
+    <div class="modal-title">👤 <span id="staffModalTitle">スタッフ登録</span></div>
+    <input type="hidden" id="staffId">
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">スタッフID</label>
+        <input type="text" class="form-control" id="staffIdInput" placeholder="S001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">氏名 <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="staffName" placeholder="山田 太郎">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">役職</label>
+        <select class="form-control" id="staffRole">
+          <option>アルバイト</option><option>社員</option><option>店長</option><option>オーナー</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">主担当フロア</label>
+        <select class="form-control" id="staffFloor"></select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">主担当ポジション</label>
+        <select class="form-control" id="staffPosition"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">時給（円）</label>
+        <input type="number" class="form-control" id="staffWage" placeholder="1050">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">入社日</label>
+        <input type="date" class="form-control" id="staffHireDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ステータス</label>
+        <select class="form-control" id="staffStatus">
+          <option>在籍</option><option>休職</option><option>退職</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">カレンダーID（Gmailアドレス）</label>
+      <input type="email" class="form-control" id="staffCalendarId" placeholder="example@gmail.com">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('staffModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitStaff()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- タスク登録モーダル -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-title">📋 <span id="taskModalTitle">タスク登録</span></div>
+    <input type="hidden" id="taskIdHidden">
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">タスクID（空欄で自動採番）</label>
+        <input type="text" class="form-control" id="taskId" placeholder="T001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">タスク名 <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="taskName" placeholder="開店前テーブル拭き">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <input type="text" class="form-control" id="taskCategory" placeholder="開店準備、清掃、閉店作業 など">
+      </div>
+      <div class="form-group">
+        <label class="form-label">フロア</label>
+        <select class="form-control" id="taskFloor"></select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">ポジション</label>
+        <select class="form-control" id="taskPosition"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">実施タイミング</label>
+        <select class="form-control" id="taskTiming">
+          <option>開店前</option><option>開店後</option><option>1時間毎</option>
+          <option>昼</option><option>夕方</option><option>閉店後</option>
+          <option>週1回(月)</option><option>月1回</option><option>随時</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">目安時間（分）</label>
+        <input type="number" class="form-control" id="taskEstMin" placeholder="10" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">重要度</label>
+        <select class="form-control" id="taskPriority">
+          <option>高</option><option>中</option><option>低</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">マニュアルURL（GoogleドキュメントURLなど）</label>
+      <input type="url" class="form-control" id="taskManualUrl" placeholder="https://docs.google.com/...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">手順メモ（アプリ内に表示するポイント）</label>
+      <textarea class="form-control" id="taskMemo" placeholder="箇条書きで手順の要点を入力"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('taskModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- スキル評価モーダル -->
+<div class="modal-overlay" id="skillModal">
+  <div class="modal">
+    <div class="modal-title">⭐ スキル評価入力</div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">スタッフ</label>
+        <select class="form-control" id="skillStaffSelect"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">カテゴリ</label>
+        <input type="text" class="form-control" id="skillCategory" placeholder="接客、ドリンク、清掃 など">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">スキル項目 <span style="color:var(--danger)">*</span></label>
+      <input type="text" class="form-control" id="skillItem" placeholder="例: 接客マナー、レジ操作、ドリンク提供速度">
+    </div>
+    <div class="form-group">
+      <label class="form-label">レベル（1〜5）</label>
+      <div class="skill-stars" id="skillLevelStars">
+        <span class="star" data-v="1" onclick="setSkillLevel(1)">★</span>
+        <span class="star" data-v="2" onclick="setSkillLevel(2)">★</span>
+        <span class="star" data-v="3" onclick="setSkillLevel(3)">★</span>
+        <span class="star" data-v="4" onclick="setSkillLevel(4)">★</span>
+        <span class="star" data-v="5" onclick="setSkillLevel(5)">★</span>
+      </div>
+      <input type="hidden" id="skillLevel" value="3">
+      <div style="font-size:.78rem;color:var(--text-sub);margin-top:4px;">
+        1=要学習 ／ 2=練習中 ／ 3=独力可 ／ 4=熟練 ／ 5=後輩指導可
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">評価者</label>
+      <input type="text" class="form-control" id="skillEvaluator" placeholder="店長名など">
+    </div>
+    <div class="form-group">
+      <label class="form-label">コメント</label>
+      <textarea class="form-control" id="skillComment"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('skillModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitSkill()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// =====================================================
+// グローバル状態
+// =====================================================
+var G = {
+  settings: null,
+  staffList: [],
+  taskList: [],
+  todayLogs: [],
+  currentPage: 'dashboard',
+  skillLevel: 3
+};
+
+// =====================================================
+// 初期化
+// =====================================================
+window.onload = function() {
+  loadSettings(function() {
+    populateSelects();
+    loadDashboard();
+    setDefaultDates();
+  });
+};
+
+function loadSettings(cb) {
+  google.script.run
+    .withSuccessHandler(function(s) {
+      G.settings = s;
+      document.getElementById('storeName').textContent = s.storeName;
+      cb();
+    })
+    .withFailureHandler(function(e) { toast('設定の読込に失敗: ' + e.message, 'error'); cb(); })
+    .getSettings();
+}
+
+function populateSelects() {
+  var floors = G.settings ? G.settings.floors : ['2F', '3F', '共通'];
+  var positions = G.settings ? G.settings.positions : ['ホール', 'ドリンク', 'レジ', 'キッチン', '共通'];
+
+  populateSelect('checkFloor', floors, true);
+  populateSelect('checkPosition', positions, true);
+  populateSelect('taskFloorFilter', floors, true);
+  populateSelect('staffFloor', floors, false);
+  populateSelect('staffPosition', positions, false);
+  populateSelect('taskFloor', floors, false);
+  populateSelect('taskPosition', positions, false);
+
+  loadStaffForSelects();
+}
+
+function populateSelect(id, items, withAll) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var current = el.value;
+  while (el.options.length > (withAll ? 1 : 0)) el.remove(withAll ? 1 : 0);
+  items.forEach(function(v) {
+    var o = new Option(v, v);
+    el.add(o);
+  });
+  if (current) el.value = current;
+}
+
+function loadStaffForSelects() {
+  google.script.run
+    .withSuccessHandler(function(list) {
+      G.staffList = list;
+      ['currentStaff', 'checkStaffSelect', 'skillStaffFilter', 'skillStaffSelect'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var hasAll = (id === 'currentStaff' || id === 'skillStaffFilter');
+        while (el.options.length > (hasAll ? 1 : 0)) el.remove(hasAll ? 1 : 0);
+        list.forEach(function(s) {
+          el.add(new Option(s.name + (s.floor ? ' (' + s.floor + ')' : ''), s.id));
+        });
+      });
+      loadStaffTable(list);
+    })
+    .withFailureHandler(function(e) { toast('スタッフ読込失敗: ' + e.message, 'error'); })
+    .getStaffList();
+}
+
+// =====================================================
+// ページ切替
+// =====================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(el, i) {
+    el.classList.toggle('active', el.getAttribute('onclick') === 'showPage(\'' + name + '\')');
+  });
+  document.getElementById('page-' + name).classList.add('active');
+  G.currentPage = name;
+
+  if (name === 'checklist') loadChecklist();
+  else if (name === 'stats') loadStats();
+  else if (name === 'skill') loadSkills();
+  else if (name === 'assess') loadAssessment();
+  else if (name === 'tasks') loadTasks();
+}
+
+// =====================================================
+// ダッシュボード
+// =====================================================
+function loadDashboard() {
+  // 統計カード
+  google.script.run
+    .withSuccessHandler(function(data) {
+      var totalStaff = data.staffStats.length;
+      var totalChecks = data.staffStats.reduce(function(s, x) { return s + x.total; }, 0);
+      var avgRate = totalChecks > 0
+        ? Math.round(data.staffStats.reduce(function(s, x) { return s + x.rate * x.total; }, 0) / totalChecks)
+        : 0;
+      var html = '<div class="stat-card blue"><div class="stat-value">' + totalStaff + '</div><div class="stat-label">在籍スタッフ数</div></div>'
+        + '<div class="stat-card green"><div class="stat-value">' + totalChecks + '</div><div class="stat-label">今月のチェック件数</div></div>'
+        + '<div class="stat-card purple"><div class="stat-value">' + avgRate + '%</div><div class="stat-label">今月の平均実施率</div></div>';
+      document.getElementById('dashStats').innerHTML = html;
+    })
+    .withFailureHandler(function() {
+      document.getElementById('dashStats').innerHTML = '';
+    })
+    .getStatsData(null, null);
+
+  // 今日の記録
+  google.script.run
+    .withSuccessHandler(function(logs) {
+      G.todayLogs = logs;
+      renderDashPending();
+      var html = '';
+      if (!logs.length) {
+        html = '<div class="empty"><div class="empty-icon">📋</div>まだ記録がありません</div>';
+      } else {
+        logs.slice(-8).reverse().forEach(function(l) {
+          html += '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'
+            + '<span class="badge ' + (l.status === '完了' ? 'badge-green' : 'badge-orange') + '">' + l.status + '</span>'
+            + '<div style="flex:1"><div style="font-size:.88rem;font-weight:600">' + esc(l.taskName) + '</div>'
+            + '<div style="font-size:.78rem;color:var(--text-sub)">' + esc(l.staffName) + ' ' + l.time + '</div></div>'
+            + (l.elapsedMin ? '<span style="font-size:.8rem;color:var(--text-sub)">' + l.elapsedMin + '分</span>' : '')
+            + '</div>';
+        });
+      }
+      document.getElementById('dashRecentList').innerHTML = html;
+    })
+    .withFailureHandler(function() {})
+    .getTodayCheckLogs('');
+}
+
+function renderDashPending() {
+  google.script.run
+    .withSuccessHandler(function(tasks) {
+      var done = G.todayLogs.filter(function(l) { return l.status === '完了'; }).map(function(l) { return l.taskId; });
+      var pending = tasks.filter(function(t) { return done.indexOf(t.id) === -1; });
+      var html = '';
+      if (!pending.length) {
+        html = '<div class="empty"><div class="empty-icon">🎉</div>全タスク完了！</div>';
+      } else {
+        pending.slice(0, 6).forEach(function(t) {
+          html += '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'
+            + '<span class="badge ' + priorityBadge(t.priority) + '">' + esc(t.priority) + '</span>'
+            + '<div style="flex:1;font-size:.88rem;font-weight:600">' + esc(t.name) + '</div>'
+            + '<span style="font-size:.78rem;color:var(--text-sub)">' + esc(t.floor) + ' ' + esc(t.timing) + '</span>'
+            + '</div>';
+        });
+        if (pending.length > 6) html += '<div style="font-size:.8rem;color:var(--text-sub);padding-top:6px">他 ' + (pending.length - 6) + ' 件...</div>';
+      }
+      document.getElementById('dashPendingList').innerHTML = html;
+    })
+    .withFailureHandler(function() {})
+    .getTaskList('', '');
+}
+
+// =====================================================
+// チェックリスト
+// =====================================================
+function loadChecklist() {
+  var floor = document.getElementById('checkFloor').value;
+  var position = document.getElementById('checkPosition').value;
+  var timing = document.getElementById('checkTiming').value;
+  document.getElementById('checklistItems').innerHTML = '<div class="loading"><div class="spinner"></div>読込中...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(tasks) {
+      G.taskList = tasks;
+      google.script.run
+        .withSuccessHandler(function(logs) {
+          G.todayLogs = logs;
+          renderChecklist(tasks, logs, timing);
+        })
+        .withFailureHandler(function() { renderChecklist(tasks, [], timing); })
+        .getTodayCheckLogs(floor);
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('checklistItems').innerHTML = '<div class="empty">読込失敗: ' + esc(e.message) + '</div>';
+    })
+    .getTaskList(floor, position);
+}
+
+function renderChecklist(tasks, logs, timing) {
+  var doneMap = {};
+  logs.forEach(function(l) {
+    if (!doneMap[l.taskId] || l.status === '完了') doneMap[l.taskId] = l;
+  });
+
+  var filtered = timing ? tasks.filter(function(t) { return t.timing === timing; }) : tasks;
+
+  if (!filtered.length) {
+    document.getElementById('checklistItems').innerHTML = '<div class="empty"><div class="empty-icon">✅</div>該当タスクなし</div>';
+    return;
+  }
+
+  // カテゴリ別グループ
+  var groups = {};
+  filtered.forEach(function(t) {
+    if (!groups[t.category]) groups[t.category] = [];
+    groups[t.category].push(t);
+  });
+
+  var html = '';
+  Object.keys(groups).forEach(function(cat) {
+    html += '<li style="list-style:none;font-weight:700;font-size:.82rem;color:var(--text-sub);padding:8px 0 4px;border-bottom:2px solid var(--border);margin-bottom:4px">'
+      + esc(cat) + '</li>';
+    groups[cat].forEach(function(t) {
+      var log = doneMap[t.id];
+      var isDone = log && log.status === '完了';
+      html += '<li class="check-item' + (isDone ? ' done' : '') + '">'
+        + '<button class="check-toggle' + (isDone ? ' done' : '') + '" onclick="openCheckModal(\'' + esc(t.id) + '\',\'' + esc(t.name) + '\')">'
+        + (isDone ? '✓' : '') + '</button>'
+        + '<div class="check-body">'
+        + '<div class="check-name">' + esc(t.name) + '</div>'
+        + '<div class="check-meta">'
+        + '<span class="badge badge-blue">' + esc(t.floor) + '</span>'
+        + '<span class="badge badge-gray">' + esc(t.position) + '</span>'
+        + '<span class="badge badge-orange">' + esc(t.timing) + '</span>'
+        + (t.estimatedMin ? '<span class="badge badge-gray">⏱ 約' + t.estimatedMin + '分</span>' : '')
+        + '<span class="badge ' + priorityBadge(t.priority) + '">' + esc(t.priority) + '</span>'
+        + '</div>'
+        + (t.memo ? '<button class="manual-btn" onclick="openManual(\'' + esc(t.name) + '\',\'' + esc(t.memo) + '\',\'' + esc(t.manualUrl) + '\')">📖 手順を見る</button>' : '')
+        + (log ? '<div class="check-time">✓ ' + esc(log.staffName) + ' ' + log.time + (log.elapsedMin ? ' (' + log.elapsedMin + '分)' : '') + '</div>' : '')
+        + '</div>'
+        + '<div class="check-actions">'
+        + '<button class="btn btn-success btn-sm" onclick="openCheckModal(\'' + esc(t.id) + '\',\'' + esc(t.name) + '\')">'
+        + (isDone ? '再記録' : '実施する') + '</button>'
+        + '</div></li>';
+    });
+  });
+
+  document.getElementById('checklistItems').innerHTML = html;
+}
+
+// =====================================================
+// チェック実施モーダル
+// =====================================================
+function openCheckModal(taskId, taskName) {
+  document.getElementById('checkTaskId').value = taskId;
+  document.getElementById('checkTaskName').value = taskName;
+  document.getElementById('checkTaskLabel').textContent = taskName;
+  document.getElementById('checkElapsed').value = '';
+  document.getElementById('checkMemo').value = '';
+  document.getElementById('checkStatus').value = '完了';
+  // 担当者セット
+  var currentStaff = document.getElementById('currentStaff').value;
+  if (currentStaff) document.getElementById('checkStaffSelect').value = currentStaff;
+  openModal('checkModal');
+}
+
+function submitCheck() {
+  var staffId = document.getElementById('checkStaffSelect').value;
+  if (!staffId) { toast('担当者を選択してください', 'error'); return; }
+
+  var staffName = '';
+  G.staffList.forEach(function(s) { if (s.id === staffId) staffName = s.name; });
+
+  var task = null;
+  G.taskList.forEach(function(t) { if (t.id === document.getElementById('checkTaskId').value) task = t; });
+
+  var logData = {
+    taskId: document.getElementById('checkTaskId').value,
+    taskName: document.getElementById('checkTaskName').value,
+    staffId: staffId,
+    staffName: staffName,
+    floor: task ? task.floor : '',
+    status: document.getElementById('checkStatus').value,
+    elapsedMin: document.getElementById('checkElapsed').value || '',
+    memo: document.getElementById('checkMemo').value
+  };
+
+  closeModal('checkModal');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      toast('✅ 記録しました！', 'success');
+      loadChecklist();
+    })
+    .withFailureHandler(function(e) { toast('記録失敗: ' + e.message, 'error'); })
+    .saveCheckLog(logData);
+}
+
+// =====================================================
+// マニュアルモーダル
+// =====================================================
+function openManual(name, memo, url) {
+  document.getElementById('manualTitle').textContent = name;
+  var html = '';
+  if (memo) html += '<div class="manual-content">' + esc(memo) + '</div>';
+  if (url) html += '<div class="manual-link">🔗 <a href="' + esc(url) + '" target="_blank">詳細マニュアルを開く</a></div>';
+  if (!memo && !url) html = '<div class="empty">マニュアルが登録されていません</div>';
+  document.getElementById('manualBody').innerHTML = html;
+  openModal('manualModal');
+}
+
+// =====================================================
+// 統計
+// =====================================================
+function setDefaultDates() {
+  var now = new Date();
+  var y = now.getFullYear(), m = now.getMonth();
+  document.getElementById('statsStart').value = y + '-' + pad(m + 1) + '-01';
+  document.getElementById('statsEnd').value   = y + '-' + pad(m + 1) + '-' + pad(new Date(y, m + 1, 0).getDate());
+  var assessEl = document.getElementById('assessMonth');
+  if (assessEl) assessEl.value = y + '-' + pad(m + 1);
+}
+
+function switchStatsTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(b, i) {
+    b.classList.toggle('active', (i === 0) === (tab === 'staff'));
+  });
+  document.getElementById('statsStaff').style.display = tab === 'staff' ? '' : 'none';
+  document.getElementById('statsTask').style.display  = tab === 'task'  ? '' : 'none';
+}
+
+function loadStats() {
+  var start = document.getElementById('statsStart').value;
+  var end   = document.getElementById('statsEnd').value;
+  document.getElementById('statsStaff').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('statsTask').innerHTML  = '<div class="loading"><div class="spinner"></div></div>';
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      renderStaffStats(data.staffStats);
+      renderTaskStats(data.taskStats);
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('statsStaff').innerHTML = '<div class="empty">読込失敗: ' + esc(e.message) + '</div>';
+    })
+    .getStatsData(start, end);
+}
+
+function renderStaffStats(list) {
+  if (!list.length) {
+    document.getElementById('statsStaff').innerHTML = '<div class="empty"><div class="empty-icon">📊</div>データなし</div>';
+    return;
+  }
+  list.sort(function(a, b) { return b.rate - a.rate; });
+  var html = '<div class="table-wrap"><table><thead><tr><th>スタッフ</th><th>実施回数</th><th>完了</th><th>実施率</th><th>グラフ</th></tr></thead><tbody>';
+  list.forEach(function(s) {
+    var color = s.rate >= 80 ? 'green' : s.rate >= 50 ? 'orange' : 'red';
+    html += '<tr><td style="font-weight:600">' + esc(s.staffName) + '</td>'
+      + '<td>' + s.total + '</td><td>' + s.done + '</td>'
+      + '<td><strong style="color:var(--' + (s.rate >= 80 ? 'success' : s.rate >= 50 ? 'warning' : 'danger') + ')">' + s.rate + '%</strong></td>'
+      + '<td style="min-width:120px"><div class="progress"><div class="progress-bar ' + color + '" style="width:' + s.rate + '%"></div></div></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('statsStaff').innerHTML = html;
+}
+
+function renderTaskStats(list) {
+  if (!list.length) {
+    document.getElementById('statsTask').innerHTML = '<div class="empty"><div class="empty-icon">📊</div>データなし</div>';
+    return;
+  }
+  list.sort(function(a, b) { return a.rate - b.rate; });
+  var html = '<div class="table-wrap"><table><thead><tr><th>タスク</th><th>実施回数</th><th>完了率</th><th>平均時間</th></tr></thead><tbody>';
+  list.forEach(function(t) {
+    html += '<tr><td style="font-weight:600">' + esc(t.taskName) + '</td>'
+      + '<td>' + t.total + '</td>'
+      + '<td><strong style="color:var(--' + (t.rate >= 80 ? 'success' : t.rate >= 50 ? 'warning' : 'danger') + ')">' + t.rate + '%</strong></td>'
+      + '<td>' + (t.avgTime !== null ? t.avgTime + '分' : '—') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('statsTask').innerHTML = html;
+}
+
+// =====================================================
+// スキルチェック
+// =====================================================
+function loadSkills() {
+  var staffId = document.getElementById('skillStaffFilter').value;
+  document.getElementById('skillContent').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  google.script.run
+    .withSuccessHandler(function(skills) {
+      if (!skills.length) {
+        document.getElementById('skillContent').innerHTML = '<div class="empty"><div class="empty-icon">⭐</div>スキルデータなし</div>';
+        return;
+      }
+      // スタッフ別にグループ
+      var byStaff = {};
+      skills.forEach(function(s) {
+        if (!byStaff[s.staffId]) byStaff[s.staffId] = { name: s.staffName, items: [] };
+        byStaff[s.staffId].items.push(s);
+      });
+
+      var html = '';
+      Object.keys(byStaff).forEach(function(sid) {
+        var staff = byStaff[sid];
+        var avg = Math.round(staff.items.reduce(function(s, x) { return s + Number(x.level); }, 0) / staff.items.length * 10) / 10;
+        html += '<div class="card"><div class="card-title"><span class="icon">👤</span>' + esc(staff.name)
+          + '<span class="badge badge-blue" style="margin-left:auto">平均 ' + avg + ' / 5</span></div>'
+          + '<div class="table-wrap"><table><thead><tr><th>スキル項目</th><th>カテゴリ</th><th>レベル</th><th>評価日</th><th>コメント</th></tr></thead><tbody>';
+        staff.items.forEach(function(sk) {
+          var stars = '';
+          for (var i = 1; i <= 5; i++) stars += '<span style="color:' + (i <= sk.level ? 'var(--warning)' : 'var(--border)') + '">★</span>';
+          html += '<tr><td style="font-weight:600">' + esc(sk.skillItem) + '</td>'
+            + '<td><span class="badge badge-gray">' + esc(sk.category) + '</span></td>'
+            + '<td>' + stars + '</td>'
+            + '<td style="font-size:.8rem;color:var(--text-sub)">' + esc(sk.evalDate) + '</td>'
+            + '<td style="font-size:.8rem">' + esc(sk.comment) + '</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+      });
+      document.getElementById('skillContent').innerHTML = html;
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('skillContent').innerHTML = '<div class="empty">読込失敗: ' + esc(e.message) + '</div>';
+    })
+    .getSkillData(staffId || null);
+}
+
+function openSkillModal() {
+  setSkillLevel(3);
+  document.getElementById('skillItem').value = '';
+  document.getElementById('skillCategory').value = '';
+  document.getElementById('skillEvaluator').value = '';
+  document.getElementById('skillComment').value = '';
+  openModal('skillModal');
+}
+
+function setSkillLevel(v) {
+  G.skillLevel = v;
+  document.getElementById('skillLevel').value = v;
+  document.querySelectorAll('#skillLevelStars .star').forEach(function(s, i) {
+    s.classList.toggle('filled', i < v);
+  });
+}
+
+function submitSkill() {
+  var staffId = document.getElementById('skillStaffSelect').value;
+  var skillItem = document.getElementById('skillItem').value.trim();
+  if (!staffId || !skillItem) { toast('スタッフとスキル項目を入力してください', 'error'); return; }
+
+  var staffName = '';
+  G.staffList.forEach(function(s) { if (s.id === staffId) staffName = s.name; });
+
+  var evalData = {
+    staffId: staffId, staffName: staffName,
+    skillItem: skillItem,
+    category: document.getElementById('skillCategory').value,
+    level: G.skillLevel,
+    evaluator: document.getElementById('skillEvaluator').value,
+    comment: document.getElementById('skillComment').value
+  };
+
+  closeModal('skillModal');
+  google.script.run
+    .withSuccessHandler(function() { toast('スキル評価を保存しました', 'success'); loadSkills(); })
+    .withFailureHandler(function(e) { toast('保存失敗: ' + e.message, 'error'); })
+    .saveSkillEval(evalData);
+}
+
+// =====================================================
+// 給与査定
+// =====================================================
+function loadAssessment() {
+  var month = document.getElementById('assessMonth').value;
+  document.getElementById('assessContent').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  google.script.run
+    .withSuccessHandler(function(list) {
+      if (!list.length) {
+        document.getElementById('assessContent').innerHTML = '<div class="empty"><div class="empty-icon">💰</div>スタッフデータなし</div>';
+        return;
+      }
+
+      var html = '';
+      list.forEach(function(s) {
+        var rateColor = s.checkRate === null ? 'var(--text-sub)' : s.checkRate >= 80 ? 'var(--success)' : s.checkRate >= 50 ? 'var(--warning)' : 'var(--danger)';
+        html += '<div class="assess-card"><div class="assess-header">'
+          + '<div><div class="assess-name">' + esc(s.staffName) + '</div><div class="assess-role">' + esc(s.role) + ' ／ 時給 ¥' + (s.wage ? Number(s.wage).toLocaleString() : '—') + '</div></div>'
+          + '<button class="btn btn-outline btn-sm" onclick="showPage(\'skill\'); document.getElementById(\'skillStaffFilter\').value=\'' + esc(s.staffId) + '\'; loadSkills()">スキル詳細 →</button>'
+          + '</div>'
+          + '<div class="assess-stats">'
+          + '<div class="assess-stat"><strong>' + (s.checkCount || 0) + '</strong> 件<div style="font-size:.75rem;color:var(--text-sub)">チェック実施数</div></div>'
+          + '<div class="assess-stat"><strong style="color:' + rateColor + '">' + (s.checkRate !== null ? s.checkRate + '%' : '—') + '</strong><div style="font-size:.75rem;color:var(--text-sub)">完了率</div></div>'
+          + '<div class="assess-stat"><strong>' + (s.avgSkillLevel !== null ? s.avgSkillLevel + ' / 5' : '未評価') + '</strong><div style="font-size:.75rem;color:var(--text-sub)">平均スキル</div></div>'
+          + '</div>';
+
+        // スキルバー
+        if (s.skills && s.skills.length) {
+          var byCat = {};
+          s.skills.forEach(function(sk) {
+            if (!byCat[sk.category]) byCat[sk.category] = [];
+            byCat[sk.category].push(sk);
+          });
+          html += '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px">';
+          Object.keys(byCat).forEach(function(cat) {
+            var avg = byCat[cat].reduce(function(a, sk) { return a + Number(sk.level); }, 0) / byCat[cat].length;
+            html += '<div style="flex:1;min-width:120px">'
+              + '<div style="font-size:.75rem;color:var(--text-sub);margin-bottom:3px">' + esc(cat) + '</div>'
+              + '<div class="progress"><div class="progress-bar ' + (avg >= 4 ? 'green' : avg >= 3 ? 'orange' : 'red') + '" style="width:' + (avg / 5 * 100) + '%"></div></div>'
+              + '<div style="font-size:.75rem;text-align:right;color:var(--text-sub)">' + Math.round(avg * 10) / 10 + '/5</div>'
+              + '</div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      document.getElementById('assessContent').innerHTML = html;
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('assessContent').innerHTML = '<div class="empty">読込失敗: ' + esc(e.message) + '</div>';
+    })
+    .getAssessmentSummary(month);
+}
+
+// =====================================================
+// スタッフ管理
+// =====================================================
+function loadStaffTable(list) {
+  if (!list) {
+    google.script.run.withSuccessHandler(function(l) { loadStaffTable(l); }).getStaffList();
+    return;
+  }
+  var html = '';
+  list.forEach(function(s) {
+    html += '<tr>'
+      + '<td style="font-family:monospace;font-size:.82rem">' + esc(s.id) + '</td>'
+      + '<td style="font-weight:600">' + esc(s.name) + '</td>'
+      + '<td><span class="badge badge-blue">' + esc(s.role) + '</span></td>'
+      + '<td>' + esc(s.floor) + '</td>'
+      + '<td>' + esc(s.position) + '</td>'
+      + '<td>¥' + (s.wage ? Number(s.wage).toLocaleString() : '—') + '</td>'
+      + '<td style="font-size:.82rem">' + esc(s.hireDate) + '</td>'
+      + '<td><span class="badge ' + (s.status === '在籍' ? 'badge-green' : 'badge-gray') + '">' + esc(s.status) + '</span></td>'
+      + '<td><button class="btn btn-outline btn-sm" onclick="editStaff(' + JSON.stringify(s) + ')">編集</button></td>'
+      + '</tr>';
+  });
+  document.getElementById('staffTableBody').innerHTML = html || '<tr><td colspan="9"><div class="empty">スタッフデータなし</div></td></tr>';
+}
+
+function openStaffModal() {
+  document.getElementById('staffModalTitle').textContent = 'スタッフ登録';
+  ['staffIdInput','staffName','staffWage','staffHireDate','staffCalendarId'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('staffRole').value = 'アルバイト';
+  document.getElementById('staffStatus').value = '在籍';
+  openModal('staffModal');
+}
+
+function editStaff(s) {
+  document.getElementById('staffModalTitle').textContent = 'スタッフ編集';
+  document.getElementById('staffIdInput').value = s.id;
+  document.getElementById('staffName').value = s.name;
+  document.getElementById('staffRole').value = s.role;
+  document.getElementById('staffFloor').value = s.floor;
+  document.getElementById('staffPosition').value = s.position;
+  document.getElementById('staffWage').value = s.wage;
+  document.getElementById('staffHireDate').value = s.hireDate ? s.hireDate.replace(/\//g, '-') : '';
+  document.getElementById('staffCalendarId').value = s.calendarId;
+  document.getElementById('staffStatus').value = s.status;
+  openModal('staffModal');
+}
+
+function submitStaff() {
+  var name = document.getElementById('staffName').value.trim();
+  if (!name) { toast('氏名を入力してください', 'error'); return; }
+  var staffData = {
+    id: document.getElementById('staffIdInput').value || ('S' + Date.now()),
+    name: name,
+    role: document.getElementById('staffRole').value,
+    floor: document.getElementById('staffFloor').value,
+    position: document.getElementById('staffPosition').value,
+    wage: document.getElementById('staffWage').value,
+    hireDate: document.getElementById('staffHireDate').value.replace(/-/g, '/'),
+    calendarId: document.getElementById('staffCalendarId').value,
+    status: document.getElementById('staffStatus').value
+  };
+  closeModal('staffModal');
+  google.script.run
+    .withSuccessHandler(function() { toast('スタッフ情報を保存しました', 'success'); loadStaffForSelects(); })
+    .withFailureHandler(function(e) { toast('保存失敗: ' + e.message, 'error'); })
+    .saveStaff(staffData);
+}
+
+// =====================================================
+// タスク管理
+// =====================================================
+function loadTasks() {
+  var floor = document.getElementById('taskFloorFilter').value;
+  document.getElementById('taskTableBody').innerHTML = '<tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr>';
+
+  google.script.run
+    .withSuccessHandler(function(tasks) {
+      var html = '';
+      tasks.forEach(function(t) {
+        html += '<tr>'
+          + '<td style="font-family:monospace;font-size:.82rem">' + esc(t.id) + '</td>'
+          + '<td style="font-weight:600">' + esc(t.name) + '</td>'
+          + '<td><span class="badge badge-gray">' + esc(t.category) + '</span></td>'
+          + '<td>' + esc(t.floor) + '</td>'
+          + '<td>' + esc(t.position) + '</td>'
+          + '<td><span class="badge badge-orange">' + esc(t.timing) + '</span></td>'
+          + '<td>' + (t.estimatedMin || '—') + '分</td>'
+          + '<td><span class="badge ' + priorityBadge(t.priority) + '">' + esc(t.priority) + '</span></td>'
+          + '<td><button class="btn btn-outline btn-sm" onclick="editTask(' + JSON.stringify(t) + ')">編集</button></td>'
+          + '</tr>';
+      });
+      document.getElementById('taskTableBody').innerHTML = html || '<tr><td colspan="9"><div class="empty">タスクデータなし</div></td></tr>';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById('taskTableBody').innerHTML = '<tr><td colspan="9">読込失敗: ' + esc(e.message) + '</td></tr>';
+    })
+    .getTaskList(floor, '');
+}
+
+function openTaskModal() {
+  document.getElementById('taskModalTitle').textContent = 'タスク登録';
+  ['taskId','taskName','taskCategory','taskEstMin','taskManualUrl','taskMemo'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('taskTiming').value = '開店前';
+  document.getElementById('taskPriority').value = '高';
+  openModal('taskModal');
+}
+
+function editTask(t) {
+  document.getElementById('taskModalTitle').textContent = 'タスク編集';
+  document.getElementById('taskId').value = t.id;
+  document.getElementById('taskName').value = t.name;
+  document.getElementById('taskCategory').value = t.category;
+  document.getElementById('taskFloor').value = t.floor;
+  document.getElementById('taskPosition').value = t.position;
+  document.getElementById('taskTiming').value = t.timing;
+  document.getElementById('taskEstMin').value = t.estimatedMin;
+  document.getElementById('taskManualUrl').value = t.manualUrl || '';
+  document.getElementById('taskMemo').value = t.memo || '';
+  document.getElementById('taskPriority').value = t.priority;
+  openModal('taskModal');
+}
+
+function submitTask() {
+  var name = document.getElementById('taskName').value.trim();
+  if (!name) { toast('タスク名を入力してください', 'error'); return; }
+  var taskData = {
+    id: document.getElementById('taskId').value,
+    name: name,
+    category: document.getElementById('taskCategory').value,
+    floor: document.getElementById('taskFloor').value,
+    position: document.getElementById('taskPosition').value,
+    timing: document.getElementById('taskTiming').value,
+    estimatedMin: document.getElementById('taskEstMin').value,
+    manualUrl: document.getElementById('taskManualUrl').value,
+    memo: document.getElementById('taskMemo').value,
+    priority: document.getElementById('taskPriority').value
+  };
+  closeModal('taskModal');
+  google.script.run
+    .withSuccessHandler(function() { toast('タスクを保存しました', 'success'); loadTasks(); })
+    .withFailureHandler(function(e) { toast('保存失敗: ' + e.message, 'error'); })
+    .saveTask(taskData);
+}
+
+// =====================================================
+// ユーティリティ
+// =====================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(function(el) {
+  el.addEventListener('click', function(e) { if (e.target === el) el.classList.remove('open'); });
+});
+
+function toast(msg, type) {
+  var el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(function() { el.remove(); }, 3500);
+}
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+function priorityBadge(p) {
+  return p === '高' ? 'badge-red' : p === '中' ? 'badge-orange' : 'badge-gray';
+}
+</script>
+</body>
+</html>
