@@ -32,11 +32,18 @@ var TIMEZONE       = 'Asia/Tokyo';
 // メニュー追加（スプレッドシートを開いたときに自動実行）
 // =====================================================
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('🗓 シフト管理')
+  var ui = SpreadsheetApp.getUi();
+
+  ui.createMenu('🗓 シフト管理')
     .addItem('シフトを集計する', 'runShiftExport')
     .addSeparator()
     .addItem('シートの初期設定', 'setupSheets')
+    .addToUi();
+
+  ui.createMenu('📊 スキルチェック管理')
+    .addItem('スキルチェックの初期設定', 'setupSkillCheckSheets')
+    .addItem('スキルチェックフォームを作成する', 'createSkillCheckForms')
+    .addItem('スキルチェック結果を集計する', 'aggregateSkillCheckResults')
     .addToUi();
 }
 
