@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世田谷の大人の韓国居酒屋 | 平日ディナー予約受付中</title>
+<meta name="description" content="K-POPもネオンもない、大人のための本格韓国居酒屋。世田谷エリア唯一。出汁と旨味が効いた「旨辛」料理と美酒を、平日の夜に。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #FBF3EA;
+    --color-bg-soft: #F4E5D6;
+    --color-text: #2E2620;
+    --color-muted: #79695C;
+    --color-primary: #C36A2D;
+    --color-primary-dark: #A4521E;
+    --color-dark: #2A2018;
+    --max-width: 480px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: "Noto Sans JP", sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.8;
+    padding-bottom: 64px; /* 固定CTAバーの高さ分 */
+  }
+
+  h1, h2, h3 {
+    font-family: "Noto Serif JP", serif;
+    font-weight: 700;
+  }
+
+  a { color: inherit; }
+
+  .container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+  }
+
+  .image-placeholder {
+    width: 100%;
+    background: linear-gradient(135deg, #E3B68B 0%, #C36A2D 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== ボタン ===== */
+  .btn {
+    display: block;
+    text-align: center;
+    width: 100%;
+    padding: 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn--primary {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(195, 106, 45, 0.35);
+  }
+
+  .btn--sub {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+    text-decoration: underline;
+  }
+
+  /* ===== セクション共通 ===== */
+  .section {
+    padding: 56px 24px;
+  }
+
+  .section--alt {
+    background: #fff;
+  }
+
+  .section--dark {
+    background: var(--color-dark);
+    color: #EFE6DC;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 999px;
+    padding: 4px 14px;
+    margin-bottom: 16px;
+  }
+
+  .section--dark .eyebrow {
+    color: #F0B27A;
+    border-color: #F0B27A;
+  }
+
+  .section h2 {
+    font-size: 1.5rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .section p {
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+
+  .section--dark p {
+    color: #CBBFB3;
+  }
+
+  /* ===== FV ===== */
+  .fv {
+    position: relative;
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background:
+      linear-gradient(180deg, rgba(42, 32, 24, 0.35) 0%, rgba(42, 32, 24, 0.85) 75%),
+      linear-gradient(135deg, #E3B68B 0%, #C36A2D 55%, #8C4A1E 100%);
+    color: #fff;
+    padding: 32px 24px 32px;
+  }
+
+  .fv__tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: #F4D9BE;
+    margin-bottom: 16px;
+  }
+
+  .fv__copy {
+    font-size: 1.55rem;
+    line-height: 1.9;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+
+  .fv__copy strong {
+    color: #F7C893;
+  }
+
+  .fv__sub {
+    font-size: 0.9rem;
+    color: #EFE2D4;
+    margin-bottom: 28px;
+  }
+
+  /* ===== 強み3カード（地域唯一） ===== */
+  .reason-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .reason-card {
+    background: var(--color-bg-soft);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .reason-card__num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    font-family: "Noto Serif JP", serif;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+
+  .reason-card__body h3 {
+    font-size: 1rem;
+    margin-bottom: 6px;
+  }
+
+  .reason-card__body p {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  /* ===== メニュー ===== */
+  .menu-list {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .menu-card {
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--color-bg);
+    border: 1px solid #EBDCCB;
+  }
+
+  .menu-card .image-placeholder {
+    aspect-ratio: 16 / 10;
+    font-size: 0.9rem;
+  }
+
+  .menu-card__body {
+    padding: 16px 18px;
+  }
+
+  .menu-card__body h3 {
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+  }
+
+  .menu-card__body p {
+    font-size: 0.85rem;
+    margin: 0 0 10px;
+  }
+
+  .pairing {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pairing span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    background: #F6E2CC;
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+
+  /* ===== 価格セクション ===== */
+  .price-box {
+    margin-top: 24px;
+    background: linear-gradient(135deg, #2A2018 0%, #4A3324 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 28px 24px;
+    text-align: center;
+  }
+
+  .price-box__label {
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    color: #E8C9A4;
+    margin-bottom: 8px;
+  }
+
+  .price-box__value {
+    font-family: "Noto Serif JP", serif;
+    font-size: 2.6rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+  }
+
+  .price-box__value span {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+
+  .price-box__desc {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #D8C7B8;
+  }
+
+  .compare {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .compare__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #EBDCCB;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+  }
+
+  .compare__row.is-active {
+    border-color: var(--color-primary);
+    background: var(--color-bg-soft);
+    font-weight: 700;
+  }
+
+  /* ===== ギャラリー ===== */
+  .gallery-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .gallery-grid .image-placeholder {
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    font-size: 0.75rem;
+  }
+
+  .gallery-grid .image-placeholder:first-child {
+    grid-column: span 2;
+    aspect-ratio: 16 / 10;
+  }
+
+  /* ===== 店舗情報 ===== */
+  .info-table {
+    margin-top: 24px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .info-table th, .info-table td {
+    text-align: left;
+    padding: 14px 0;
+    border-bottom: 1px solid #EBDCCB;
+    vertical-align: top;
+  }
+
+  .info-table th {
+    width: 28%;
+    color: var(--color-primary-dark);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .map-placeholder {
+    margin-top: 20px;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+  }
+
+  .final-cta {
+    margin-top: 28px;
+    text-align: center;
+  }
+
+  .final-cta p {
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  }
+
+  /* ===== 固定CTAバー（モバイル最優先） ===== */
+  .sticky-cta {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid #EBDCCB;
+    padding: 10px 16px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+  }
+
+  .sticky-cta__inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .sticky-cta__text {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--color-muted);
+  }
+
+  .sticky-cta__text strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    font-weight: 700;
+  }
+
+  .sticky-cta .btn {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  /* ===== フッター ===== */
+  .footer {
+    background: var(--color-dark);
+    color: #B6A998;
+    text-align: center;
+    padding: 24px;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===== タブレット以上は中央寄せで余白を持たせる ===== */
+  @media (min-width: 600px) {
+    :root {
+      --max-width: 600px;
+    }
+    .section {
+      padding: 80px 24px;
+    }
+    .section h2 {
+      font-size: 1.9rem;
+    }
+    .gallery-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .gallery-grid .image-placeholder:first-child {
+      grid-column: span 3;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. ファーストビュー ============ -->
+<section class="fv" id="top">
+  <div class="container">
+    <p class="fv__tag">SETAGAYA / KOREAN DINING</p>
+    <h1 class="fv__copy">
+      世田谷の夜に、<br>
+      美酒と味わう<strong>滋味深き旨辛</strong>。
+    </h1>
+    <p class="fv__sub">
+      K-POPもネオンもない、大人のための本格韓国居酒屋。<br>
+      平日のディナーに、ゆったりとした一席をご用意します。
+    </p>
+    <a href="#reserve" class="btn btn--primary">平日のWeb予約はこちら</a>
+    <a href="#about" class="btn btn--sub">この街にしかない理由を見る ▼</a>
+  </div>
+</section>
+
+<!-- ============ 2. 地域唯一の選択肢 ============ -->
+<section class="section" id="about">
+  <div class="container">
+    <span class="eyebrow">WHY US</span>
+    <h2>このエリアで、<br>本格韓国料理は当店だけ。</h2>
+    <p>
+      チェーン居酒屋やトレンドの韓国料理店はあっても、
+      「大人が腰を据えて、美味しい韓国料理とお酒を楽しめる店」は
+      この街にはありませんでした。
+    </p>
+    <div class="reason-list">
+      <div class="reason-card">
+        <div class="reason-card__num">01</div>
+        <div class="reason-card__body">
+          <h3>地域で唯一の本格韓国居酒屋</h3>
+          <p>近隣に同様のお店がなく、ご近所の特別な一軒として選ばれています。</p>
+        </div>
+      </div>
+      <div class="reason-card">
+        <div class="reason-card__num">02</div>
+        <div class="reason-card__body">
+          <h3>K-POP・ネオンなしの大人空間</h3>
+          <p>賑やかな若者向けの内装・選曲は一切なし。落ち着いた会話を楽しめます。</p>
+        </div>
+      </div>
+      <div class="reason-card">
+        <div class="reason-card__num">03</div>
+        <div class="reason-card__body">
+          <h3>平日夜こそ、ゆったりと</h3>
+          <p>混雑しがちな週末を避け、平日の仕事帰り・夫婦の時間にこそおすすめです。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. 料理のこだわり ============ -->
+<section class="section section--alt" id="food">
+  <div class="container">
+    <span class="eyebrow">OUR FOOD</span>
+    <h2>激辛ではなく、<br>「旨辛」を、美酒とともに。</h2>
+    <p>
+      唐辛子の辛さだけを前面に出した料理ではありません。
+      丁寧に引いた出汁と素材の旨味をベースに、
+      ビール・ハイボール・マッコリが進む「旨辛」に仕上げています。
+    </p>
+    <div class="menu-list">
+      <div class="menu-card">
+        <div class="image-placeholder">料理写真：プデチゲ</div>
+        <div class="menu-card__body">
+          <h3>旨味出汁のプデチゲ</h3>
+          <p>じっくり煮込んだ出汁に旨辛の薬味を効かせた、シメまで美味しい一品。</p>
+          <div class="pairing">
+            <span>ビール</span><span>ハイボール</span>
+          </div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="image-placeholder">料理写真：チヂミ盛り合わせ</div>
+        <div class="menu-card__body">
+          <h3>香ばしいチヂミ盛り合わせ</h3>
+          <p>外はカリッと中はもちっと。お酒の最初の一品にぴったりの定番。</p>
+          <div class="pairing">
+            <span>マッコリ</span><span>ビール</span>
+          </div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="image-placeholder">料理写真：旨辛サムギョプサル</div>
+        <div class="menu-card__body">
+          <h3>炭火焼き 旨辛サムギョプサル</h3>
+          <p>厳選した豚肉を香ばしく焼き上げ、特製の旨辛だれで。お酒が止まりません。</p>
+          <div class="pairing">
+            <span>ハイボール</span><span>焼酎</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 価格と満足度のバランス ============ -->
+<section class="section" id="price">
+  <div class="container">
+    <span class="eyebrow">VALUE</span>
+    <h2>満足度とコスパの、<br>ちょうどいいバランス。</h2>
+    <p>
+      安さだけが売りのチェーン店よりも美味しく、
+      気を遣う高級店よりも気軽に。
+      「また平日に来たい」と思える価格設定です。
+    </p>
+    <div class="price-box">
+      <p class="price-box__label">平日ディナー想定 客単価</p>
+      <p class="price-box__value">5,000<span>円台</span></p>
+      <p class="price-box__desc">本格的な料理とお酒を、心ゆくまで楽しんでこの価格。</p>
+    </div>
+    <div class="compare">
+      <div class="compare__row">
+        <span>チェーン系居酒屋</span>
+        <span>安いが、満足度はそれなり</span>
+      </div>
+      <div class="compare__row is-active">
+        <span>当店（5,000円台）</span>
+        <span>本格的な味とお酒を満足いくまで</span>
+      </div>
+      <div class="compare__row">
+        <span>高級韓国料理店</span>
+        <span>美味しいが、気軽には行けない</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. 店内の雰囲気 ============ -->
+<section class="section section--dark" id="space">
+  <div class="container">
+    <span class="eyebrow">SPACE</span>
+    <h2>落ち着いた、<br>大人のためのモダン空間。</h2>
+    <p>
+      K-POPもネオンサインもありません。
+      温かみのある照明と上質な内装で、
+      平日のご夫婦のディナーや、仕事帰りの一杯にもなじむ空間です。
+    </p>
+    <div class="gallery-grid">
+      <div class="image-placeholder">店内写真：フロア全景</div>
+      <div class="image-placeholder">店内写真：カウンター席</div>
+      <div class="image-placeholder">店内写真：テーブル席</div>
+      <div class="image-placeholder">店内写真：照明・内装</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. 店舗情報・アクセス・予約 ============ -->
+<section class="section section--alt" id="reserve">
+  <div class="container">
+    <span class="eyebrow">ACCESS &amp; RESERVE</span>
+    <h2>店舗情報・アクセス</h2>
+    <table class="info-table">
+      <tr>
+        <th>店名</th>
+        <td>韓国居酒屋プッチョン</td>
+      </tr>
+      <tr>
+        <th>住所</th>
+        <td>東京都世田谷区〇〇 0-0-0</td>
+      </tr>
+      <tr>
+        <th>アクセス</th>
+        <td>〇〇駅から徒歩〇分</td>
+      </tr>
+      <tr>
+        <th>営業時間</th>
+        <td>平日 17:00〜24:00（L.O. 23:00）</td>
+      </tr>
+      <tr>
+        <th>定休日</th>
+        <td>不定休</td>
+      </tr>
+      <tr>
+        <th>電話番号</th>
+        <td>00-0000-0000</td>
+      </tr>
+    </table>
+    <div class="image-placeholder map-placeholder">地図</div>
+    <div class="final-cta">
+      <p>平日の落ち着いた時間に、<br>本格韓国料理と美酒をご一緒に。</p>
+      <a href="#" class="btn btn--primary">平日のWeb予約はこちら</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p>&copy; 2026 韓国居酒屋プッチョン</p>
+</footer>
+
+<!-- ============ 固定CTAバー ============ -->
+<div class="sticky-cta">
+  <div class="sticky-cta__inner">
+    <p class="sticky-cta__text">
+      <strong>平日限定</strong>
+      ゆったり予約受付中
+    </p>
+    <a href="#" class="btn btn--primary">Web予約</a>
+  </div>
+</div>
+
+</body>
+</html>
